@@ -1,0 +1,16 @@
+{
+    "name": "microham",
+    "stubs": {
+        "esp32-micropython-1.12.0": "1.3.2"
+    },
+    "dev-packages": {
+        "micropy-cli": "*"
+    },
+    "packages": {
+        "micropython-umqtt-robust2": "*"
+    },
+    "config": {
+        "vscode": true,
+        "pylint": true
+    }
+}
