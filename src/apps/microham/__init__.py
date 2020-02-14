@@ -26,8 +26,10 @@ CHANNEL = 0
 
 
 class microham:
-    # Initializes the chat client
+    """microham: a virtual amateur radio client, using MQTT"""
+
     def __init__(self):
+        """Initialize the microham client. Connect wifi, connect MQTT, subscribe to default channel."""
         display.drawFill(0x000000)
         display.drawText(0, 0, "microham starting", 0xFFFFFF, "7x5")
         display.drawText(0, 8, CLIENT_ID, 0xFFFFFF, "7x5")
@@ -63,10 +65,11 @@ class microham:
         print("mqtt started")
         display.drawText(0, 24, "mqtt started", 0xFFFFFF, "7x5")
         display.flush()
-        utime.sleep_ms(2000)
+        utime.sleep_ms(1000)
         self.clear()
 
     def channel_up(self, pressed=True):
+        """Switch the channel to one number higher. Causes a reconnect to the MQTT server."""
         if pressed:
             self.channel = self.channel + 1
             self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
@@ -78,6 +81,7 @@ class microham:
             self.clear()
 
     def channel_down(self, pressed=True):
+        """Switch the channel to one number lower. Causes a reconnect to the MQTT server."""
         if pressed:
             self.channel = self.channel - 1
             self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
@@ -88,8 +92,8 @@ class microham:
             self.client.subscribe(self.topic)
             self.clear()
 
-    # print function for the received messages
     def sub_cb(self, topic, msg, retain, dup):
+        """Handle an incoming message from the MQTT server, format and display it."""
         message = msg.decode('ascii')
         topic = topic.decode('ascii')
         # walthertest/channelname/username, and add colon
@@ -98,26 +102,27 @@ class microham:
         print(message)
         self.clear()
         display.drawText(0, 8, username, 0xFFFFFF, "7x5")
-        display.drawText(0, 16, message, 0xFFFFFF, "7x5")
+        display.drawText(0, 16, message, 0xFFFFFF, "7x5")  # TODO: wrap/scroll?
         display.flush()
 
     def clear(self):
+        """Clear the screen and draw the current channel number."""
         display.drawFill(0x000000)
         display.drawText(0, 0, "microham channel {}".format(
             self.channel), 0xFFFFFF, "7x5")
         display.flush()
 
-    # blocking call that requests input and then sends
     def send_message(self, pressed=True):
+        """Blocking call. Prompt for a message via serial input, send the message to MQTT server"""
         if pressed:
             if self.client.is_conn_issue():
                 self.client.reconnect()
             term.clear()
-            topic = "{}/{}/{}".format(BASE_TOPIC, CHANNEL, NICKNAME)
             self.clear()
+            topic = "{}/{}/{}".format(BASE_TOPIC, CHANNEL, NICKNAME)
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
-            # prompt is blocking, waits here instead of looping
+            # prompt is a blocking call, waits here for the message
             message = term.prompt("message:", 0, 1)
             if len(message) > 0:
                 self.client.publish(topic, message)
@@ -128,8 +133,8 @@ class microham:
             utime.sleep_ms(500)
             self.clear()
 
-    # the main refresh loop
     def main(self):
+        """The main refresh loop for microham."""
         while True:  # main loop
             utime.sleep_ms(500)
             if self.client.is_conn_issue():
