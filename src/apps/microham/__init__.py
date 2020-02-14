@@ -13,6 +13,8 @@ import wifi
 import term
 
 
+# the badge has the umqtt.robust2 library renamed in this way
+# to keep the support for legacy umqtt some apps depend on
 from umqtt2.robust2 import MQTTClient
 
 SERVER = "test.mosquitto.org"
