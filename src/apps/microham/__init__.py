@@ -15,7 +15,6 @@ import term
 
 from umqtt2.robust2 import MQTTClient
 
-BLOCKING_METHOD = False
 SERVER = "test.mosquitto.org"
 CLIENT_ID = board_id = "{}".format(
     binascii.hexlify(machine.unique_id()).decode("ascii"))
@@ -42,7 +41,7 @@ class microham:
             display.drawText(0, 16, "wifi error", 0xFFFFFF, "7x5")
         else:
             print("wifi connected")
-            display.drawText(0, 16, "wifi success", 0xFFFFFF, "7x5")
+            display.drawText(0, 16, "wifi connected", 0xFFFFFF, "7x5")
         display.flush()
 
         # umqtt client
@@ -54,10 +53,9 @@ class microham:
         self.client.MSG_QUEUE_MAX = 2
         self.client.set_callback(self.sub_cb)
 
-        self.channel = CHANNEL  # Channel number
+        self.channel = CHANNEL  # Channel number, int
         # Wildcard subscribe to channel's topics; subtopics are userIDs
         self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
-        print(self.topic)
 
         if not self.client.connect(clean_session=True):
             self.client.subscribe(self.topic)
@@ -72,25 +70,22 @@ class microham:
         """Switch the channel to one number higher. Causes a reconnect to the MQTT server."""
         if pressed:
             self.channel = self.channel + 1
-            self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
-            print(self.topic)
-            # Funnily enough, this library does not have an unsubscribe method, so we need to reconnect. Ugly, but works.
-            self.client.disconnect()
-            self.client.connect(clean_session=True)
-            self.client.subscribe(self.topic)
+            self.exclusive_subscribe()
             self.clear()
 
     def channel_down(self, pressed=True):
         """Switch the channel to one number lower. Causes a reconnect to the MQTT server."""
         if pressed:
             self.channel = self.channel - 1
-            self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
-            print(self.topic)
-            # Funnily enough, this library does not have an unsubscribe method, so we need to reconnect. Ugly, but works.
-            self.client.disconnect()
-            self.client.connect(clean_session=True)
-            self.client.subscribe(self.topic)
+            self.exclusive_subscribe()
             self.clear()
+
+    def exclusive_subscribe(self):
+        """Manually disconnect, connect, and subscribe. Workaround for the library not supporting unsubscribe."""
+        self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
+        self.client.disconnect()
+        self.client.connect(clean_session=True)
+        self.client.subscribe(self.topic)
 
     def sub_cb(self, topic, msg, retain, dup):
         """Handle an incoming message from the MQTT server, format and display it."""
@@ -111,6 +106,7 @@ class microham:
         display.drawText(0, 0, "microham channel {}".format(
             self.channel), 0xFFFFFF, "7x5")
         display.flush()
+        print("microham channel {}".format(self.channel))
 
     def send_message(self, pressed=True):
         """Blocking call. Prompt for a message via serial input, send the message to MQTT server"""
@@ -119,7 +115,7 @@ class microham:
                 self.client.reconnect()
             term.clear()
             self.clear()
-            topic = "{}/{}/{}".format(BASE_TOPIC, CHANNEL, NICKNAME)
+            topic = "{}/{}/{}".format(BASE_TOPIC, self.channel, NICKNAME)
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
             # prompt is a blocking call, waits here for the message
@@ -135,7 +131,7 @@ class microham:
 
     def main(self):
         """The main refresh loop for microham."""
-        while True:  # main loop
+        while True:
             utime.sleep_ms(500)
             if self.client.is_conn_issue():
                 self.client.reconnect()
