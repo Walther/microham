@@ -21,8 +21,8 @@ Virtual amateur radio for Disobey 2020 badge.
 - [x] Connect to a test MQTT server
 - [x] Receive messages sent to a topic
 - [x] Send messages to a topic
-- [ ] Switch the topic you're subscribed to
-- [ ] Serial interface / UI for text chat instead of audio
+- [x] Switch the topic you're subscribed to
+- [x] Serial interface / UI for text chat instead of audio
 - [ ] Audio messages from the badge
 - [ ] Set up Disobey MQTT server
 - [ ] Clean up the topic channel levels

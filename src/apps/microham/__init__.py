@@ -22,7 +22,7 @@ CLIENT_ID = board_id = "{}".format(
 NICKNAME = machine.nvs_getstr("owner", "name")
 # change base_topic to disobey, or clean up one level when we have a custom server
 BASE_TOPIC = "walthertest"
-CHANNEL = "0"
+CHANNEL = 0
 
 
 class microham:
@@ -52,32 +52,59 @@ class microham:
         self.client.MSG_QUEUE_MAX = 2
         self.client.set_callback(self.sub_cb)
 
-        self.channel = CHANNEL
+        self.channel = CHANNEL  # Channel number
+        # Wildcard subscribe to channel's topics; subtopics are userIDs
         self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
         print(self.topic)
 
         if not self.client.connect(clean_session=True):
-            print("New MQTT Session")
-            # Wildcard subscribe to channel's topics; subtopics are userIDs
             self.client.subscribe(self.topic)
 
         print("mqtt started")
         display.drawText(0, 24, "mqtt started", 0xFFFFFF, "7x5")
         display.flush()
+        utime.sleep_ms(2000)
+        self.clear()
+
+    def channel_up(self, pressed=True):
+        if pressed:
+            self.channel = self.channel + 1
+            self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
+            print(self.topic)
+            # Funnily enough, this library does not have an unsubscribe method, so we need to reconnect. Ugly, but works.
+            self.client.disconnect()
+            self.client.connect(clean_session=True)
+            self.client.subscribe(self.topic)
+            self.clear()
+
+    def channel_down(self, pressed=True):
+        if pressed:
+            self.channel = self.channel - 1
+            self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
+            print(self.topic)
+            # Funnily enough, this library does not have an unsubscribe method, so we need to reconnect. Ugly, but works.
+            self.client.disconnect()
+            self.client.connect(clean_session=True)
+            self.client.subscribe(self.topic)
+            self.clear()
 
     # print function for the received messages
     def sub_cb(self, topic, msg, retain, dup):
         message = msg.decode('ascii')
         topic = topic.decode('ascii')
-        # walthertest/channelname/username
+        # walthertest/channelname/username, and add colon
         username = topic.split("/")[2] + ':'
         print(username)
         print(message)
+        self.clear()
+        display.drawText(0, 8, username, 0xFFFFFF, "7x5")
+        display.drawText(0, 16, message, 0xFFFFFF, "7x5")
+        display.flush()
+
+    def clear(self):
         display.drawFill(0x000000)
         display.drawText(0, 0, "microham channel {}".format(
             self.channel), 0xFFFFFF, "7x5")
-        display.drawText(0, 8, username, 0xFFFFFF, "7x5")
-        display.drawText(0, 16, message, 0xFFFFFF, "7x5")
         display.flush()
 
     # blocking call that requests input and then sends
@@ -87,9 +114,7 @@ class microham:
                 self.client.reconnect()
             term.clear()
             topic = "{}/{}/{}".format(BASE_TOPIC, CHANNEL, NICKNAME)
-            display.drawFill(0x000000)
-            display.drawText(0, 0, "microham channel {}".format(
-                self.channel), 0xFFFFFF, "7x5")
+            self.clear()
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
             # prompt is blocking, waits here instead of looping
@@ -101,14 +126,9 @@ class microham:
                 display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
             # wait and clear
             utime.sleep_ms(500)
-            display.drawFill(0x000000)
-            display.drawText(0, 0, "microham", 0xFFFFFF, "7x5")
-            display.drawText(0, 8, "channel {}".format(
-                self.channel), 0xFFFFFF, "7x5")
-            display.flush()
+            self.clear()
 
     # the main refresh loop
-
     def main(self):
         while True:  # main loop
             utime.sleep_ms(500)
@@ -123,4 +143,6 @@ class microham:
 
 m = microham()
 buttons.attach(buttons.BTN_A, m.send_message)
+buttons.attach(buttons.BTN_UP, m.channel_up)
+buttons.attach(buttons.BTN_DOWN, m.channel_down)
 m.main()
