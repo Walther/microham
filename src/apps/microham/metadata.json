@@ -1,7 +1,8 @@
 {
-  "name": "microham",
+  "name": "ham radio",
   "description": "virtual amateur radio",
   "category": "event_related",
   "author": "Walther",
-  "revision": 1
+  "revision": 1,
+  "icon": "icon.png"
 }
