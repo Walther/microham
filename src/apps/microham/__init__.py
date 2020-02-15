@@ -17,12 +17,10 @@ import term
 # to keep the support for legacy umqtt some apps depend on
 from umqtt2.robust2 import MQTTClient
 
-SERVER = "test.mosquitto.org"
+SERVER = "disobey.hilla.io"
 CLIENT_ID = board_id = "{}".format(
     binascii.hexlify(machine.unique_id()).decode("ascii"))
 NICKNAME = machine.nvs_getstr("owner", "name")
-# change base_topic to disobey, or clean up one level when we have a custom server
-BASE_TOPIC = "walthertest"
 CHANNEL = 0
 
 
@@ -57,7 +55,7 @@ class microham:
 
         self.channel = CHANNEL  # Channel number, int
         # Wildcard subscribe to channel's topics; subtopics are userIDs
-        self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
+        self.topic = b"{}/#".format(self.channel)
 
         if not self.client.connect(clean_session=True):
             self.client.subscribe(self.topic)
@@ -84,7 +82,7 @@ class microham:
 
     def exclusive_subscribe(self):
         """Manually disconnect, connect, and subscribe. Workaround for the library not supporting unsubscribe."""
-        self.topic = b"{}/{}/#".format(BASE_TOPIC, self.channel)
+        self.topic = b"{}/#".format(self.channel)
         self.client.disconnect()
         self.client.connect(clean_session=True)
         self.client.subscribe(self.topic)
@@ -93,8 +91,8 @@ class microham:
         """Handle an incoming message from the MQTT server, format and display it."""
         message = msg.decode('ascii')
         topic = topic.decode('ascii')
-        # walthertest/channelname/username, and add colon
-        username = topic.split("/")[2] + ':'
+        # channelname/username, and add colon
+        username = topic.split("/")[1] + ':'
         print(username)
         print(message)
         self.clear()
@@ -117,7 +115,7 @@ class microham:
                 self.client.reconnect()
             term.clear()
             self.clear()
-            topic = "{}/{}/{}".format(BASE_TOPIC, self.channel, NICKNAME)
+            topic = "{}/{}".format(self.channel, NICKNAME)
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
             # prompt is a blocking call, waits here for the message

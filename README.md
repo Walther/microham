@@ -14,10 +14,9 @@ Please note that there is zero expectation of privacy, security or trust on the 
 
 ## Implementation details
 
-- MQTT server: currently using `test.mosquitto.org` for testing purposes
-- Channel topology with the topics: `walthertest/[channelnumber]/[nickname]`
-- When we have our own server, the first layer of topic can be dropped, becoming `[channelnumber]/nickname`
-- By default, the badges subscribe to the topic `walthertest/0/#` (note the wildcard!)
+- MQTT server: currently using `disobey.hilla.io`
+- Channels are implemented with topics: topic topology is `[channelnumber]/[nickname]`
+- By default, the badges subscribe to the topic `0/#` (note the wildcard!)
 - When a badge sends a message, it gets sent to a subtopic with the nickname
 - This subtopic is then used to show the nickname of the sender of the message
 
@@ -39,7 +38,7 @@ Please note that there is zero expectation of privacy, security or trust on the 
 - [x] Switch the topic you're subscribed to
 - [x] Serial interface / UI for text chat instead of audio
 - [ ] Audio messages from/to the badge
-- [ ] Set up Disobey MQTT server
-- [ ] Clean up the topic channel levels
+- [x] Set up Disobey MQTT server
+- [x] Clean up the topic channel levels
 - [ ] Better error handling and user-friendly output on the display
 
