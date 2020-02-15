@@ -11,6 +11,8 @@ import utime
 import version
 import wifi
 import term
+import sndmixer
+import opus
 
 
 # the badge has the umqtt.robust2 library renamed in this way
@@ -22,6 +24,12 @@ CLIENT_ID = board_id = "{}".format(
     binascii.hexlify(machine.unique_id()).decode("ascii"))
 NICKNAME = machine.nvs_getstr("owner", "name")
 CHANNEL = 0
+
+SAMPLING_RATE = 8000
+STEREO = False
+ENCODER = opus.Encoder(SAMPLING_RATE, STEREO)
+DECODER = opus.Decoder()
+sndmixer.begin(2, True)
 
 
 class microham:
@@ -88,17 +96,20 @@ class microham:
         self.client.subscribe(self.topic)
 
     def sub_cb(self, topic, msg, retain, dup):
-        """Handle an incoming message from the MQTT server, format and display it."""
-        message = msg.decode('ascii')
-        topic = topic.decode('ascii')
-        # channelname/username, and add colon
-        username = topic.split("/")[1] + ':'
-        print(username)
-        print(message)
-        self.clear()
-        display.drawText(0, 8, username, 0xFFFFFF, "7x5")
-        display.drawText(0, 16, message, 0xFFFFFF, "7x5")  # TODO: wrap/scroll?
-        display.flush()
+        """Handle an incoming message from the MQTT server, decode and play it"""
+        try:
+            topic = topic.decode('ascii')
+            # channelname/username, and add colon
+            username = topic.split("/")[1] + ':'
+            # Assumes the messages are in our own format
+            message = bytes(DECODER.decode(msg))
+            sndmixer.opus(message)
+            self.clear()
+            display.drawText(0, 8, username, 0xFFFFFF, "7x5")
+            display.flush()
+        except:
+            display.drawText(0, 8, "received broken data", 0xFFFFFF, "7x5")
+            display.flush()
 
     def clear(self):
         """Clear the screen and draw the current channel number."""
@@ -119,12 +130,23 @@ class microham:
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
             # prompt is a blocking call, waits here for the message
-            message = term.prompt("message:", 0, 1)
-            if len(message) > 0:
-                self.client.publish(topic, message)
-                self.client.send_queue()
-                print("\nmessage sent")
-                display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
+            # message = term.prompt("message:", 0, 1)
+
+            try:
+                # One frame of data containing 480 null samples
+                buffer = bytearray(960)
+                # Encode the data
+                message = ENCODER.encode(buffer, 50)
+
+                if len(message) > 0:
+                    self.client.publish(topic, message)
+                    self.client.send_queue()
+                    print("\nmessage sent")
+                    display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
+            except:
+                display.drawText(
+                    0, 8, "tried to send broken data", 0xFFFFFF, "7x5")
+                display.flush()
             # wait and clear
             utime.sleep_ms(500)
             self.clear()
