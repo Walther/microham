@@ -102,6 +102,7 @@ class microham:
             # channelname/username, and add colon
             username = topic.split("/")[1] + ':'
             # Assumes the messages are in our own format
+            print("{}".format(msg))
             message = bytes(DECODER.decode(msg))
             sndmixer.opus(message)
             self.clear()
@@ -137,6 +138,7 @@ class microham:
                 buffer = bytearray(960)
                 # Encode the data
                 message = ENCODER.encode(buffer, 50)
+                print("{}".format(bytes(message)))
 
                 if len(message) > 0:
                     self.client.publish(topic, message)
