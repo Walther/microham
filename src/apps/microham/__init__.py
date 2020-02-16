@@ -13,7 +13,7 @@ import wifi
 import term
 import sndmixer
 import opus
-
+import microphone
 
 # the badge has the umqtt.robust2 library renamed in this way
 # to keep the support for legacy umqtt some apps depend on
@@ -120,6 +120,22 @@ class microham:
         display.flush()
         print("microham channel {}".format(self.channel))
 
+    def record_opus(self, seconds):
+        # Adapted from https://github.com/badgeteam/ESP32-platform-firmware/pull/151#issuecomment-586458480
+        buffer = []
+        microphone.disable()
+        microphone.enable()
+        end_time = utime.ticks_ms() + int(seconds * 1000)
+        while utime.ticks_ms() < end_time:
+            utime.sleep_ms(10)
+            data = microphone.read()
+            if data:
+                buffer += [ENCODER.encode(data[0], 100)]
+                data = None
+        microphone.disable()
+        buffer += [ENCODER.encode(d, 100) for d in microphone.read(10)]
+        return buffer
+
     def send_message(self, pressed=True):
         """Record a message via microphone, encode in opus, send the message to MQTT server"""
         if pressed:
@@ -132,25 +148,19 @@ class microham:
             display.flush()
 
             try:
-                # One frame of data containing 480 null samples
-                buffer = bytearray(960)
-                print("send_message buffer: {}".format(bytes(buffer)))
-                # Encode, first try. Will somehow be a bit broken?
-                message = ENCODER.encode(buffer, 50)
-                print("send_message message: {}".format(bytes(message)))
-                # Encode, second try. Will somehow work this time around
-                message2 = ENCODER.encode(buffer, 50)
-                print("send_message message2: {}".format(bytes(message2)))
+                message = bytes(self.record_opus(12))
+                print("send_message: {}".format(message))
 
                 if len(message) > 0:
-                    self.client.publish(topic, message2)
+                    self.client.publish(topic, message)
                     self.client.send_queue()
                     print("\nmessage sent")
                     display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
-            except:
+            except Exception as e:
                 display.drawText(
-                    0, 8, "tried to send broken data", 0xFFFFFF, "7x5")
+                    0, 8, "unable to transmit", 0xFFFFFF, "7x5")
                 display.flush()
+                print("send_message exception: {}".format(e))
             # wait and clear
             utime.sleep_ms(500)
             self.clear()
