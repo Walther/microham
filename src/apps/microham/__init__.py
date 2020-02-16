@@ -101,11 +101,10 @@ class microham:
             topic = topic.decode('ascii')
             # channelname/username, and add colon
             username = topic.split("/")[1] + ':'
-            # Assumes the messages are in our own format
             print("sub_cb msg: {}".format(msg))
-            message = bytes(DECODER.decode(msg))
-            print("sub_cb message: {}".format(message))
-            sndmixer.opus(message)
+            print("sub_cb decoded: {}".format(DECODER.decode(msg)))
+            sndmixer.opus(bytes(msg))  # does its own decoding
+
             self.clear()
             display.drawText(0, 8, username, 0xFFFFFF, "7x5")
             display.flush()
@@ -120,14 +119,9 @@ class microham:
             self.channel), 0xFFFFFF, "7x5")
         display.flush()
         print("microham channel {}".format(self.channel))
-        # DEBUG TEST
-        test_bytes = bytearray(960)
-        encoded = ENCODER.encode(test_bytes, 128)
-        decoded = DECODER.decode(encoded)
-        print("debug1: {}".format(decoded))
 
     def send_message(self, pressed=True):
-        """Blocking call. Prompt for a message via serial input, send the message to MQTT server"""
+        """Record a message via microphone, encode in opus, send the message to MQTT server"""
         if pressed:
             if self.client.is_conn_issue():
                 self.client.reconnect()
@@ -136,19 +130,20 @@ class microham:
             topic = "{}/{}".format(self.channel, NICKNAME)
             display.drawText(0, 8, "transmitting...", 0xFFFFFF, "7x5")
             display.flush()
-            # prompt is a blocking call, waits here for the message
-            # message = term.prompt("message:", 0, 1)
 
             try:
                 # One frame of data containing 480 null samples
                 buffer = bytearray(960)
                 print("send_message buffer: {}".format(bytes(buffer)))
-                # Encode the data
+                # Encode, first try. Will somehow be a bit broken?
                 message = ENCODER.encode(buffer, 50)
                 print("send_message message: {}".format(bytes(message)))
+                # Encode, second try. Will somehow work this time around
+                message2 = ENCODER.encode(buffer, 50)
+                print("send_message message2: {}".format(bytes(message2)))
 
                 if len(message) > 0:
-                    self.client.publish(topic, message)
+                    self.client.publish(topic, message2)
                     self.client.send_queue()
                     print("\nmessage sent")
                     display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
