@@ -102,8 +102,9 @@ class microham:
             # channelname/username, and add colon
             username = topic.split("/")[1] + ':'
             # Assumes the messages are in our own format
-            print("{}".format(msg))
+            print("sub_cb msg: {}".format(msg))
             message = bytes(DECODER.decode(msg))
+            print("sub_cb message: {}".format(message))
             sndmixer.opus(message)
             self.clear()
             display.drawText(0, 8, username, 0xFFFFFF, "7x5")
@@ -119,6 +120,11 @@ class microham:
             self.channel), 0xFFFFFF, "7x5")
         display.flush()
         print("microham channel {}".format(self.channel))
+        # DEBUG TEST
+        test_bytes = bytearray(960)
+        encoded = ENCODER.encode(test_bytes, 128)
+        decoded = DECODER.decode(encoded)
+        print("debug1: {}".format(decoded))
 
     def send_message(self, pressed=True):
         """Blocking call. Prompt for a message via serial input, send the message to MQTT server"""
@@ -136,9 +142,10 @@ class microham:
             try:
                 # One frame of data containing 480 null samples
                 buffer = bytearray(960)
+                print("send_message buffer: {}".format(bytes(buffer)))
                 # Encode the data
                 message = ENCODER.encode(buffer, 50)
-                print("{}".format(bytes(message)))
+                print("send_message message: {}".format(bytes(message)))
 
                 if len(message) > 0:
                     self.client.publish(topic, message)
