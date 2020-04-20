@@ -103,7 +103,7 @@ class microham:
             username = topic.split("/")[1] + ':'
             print("sub_cb msg: {}".format(msg))
             print("sub_cb decoded: {}".format(DECODER.decode(msg)))
-            sndmixer.opus(bytes(msg))  # does its own decoding
+            sndmixer.opus(msg)  # does its own decoding
 
             self.clear()
             display.drawText(0, 8, username, 0xFFFFFF, "7x5")
@@ -120,21 +120,21 @@ class microham:
         display.flush()
         print("microham channel {}".format(self.channel))
 
-    def record_opus(self, seconds):
-        # Adapted from https://github.com/badgeteam/ESP32-platform-firmware/pull/151#issuecomment-586458480
-        buffer = []
+    def record(self, t):
+        ret = []
+        enc = opus.Encoder(8000, 0)
         microphone.disable()
         microphone.enable()
-        end_time = utime.ticks_ms() + int(seconds * 1000)
+        end_time = utime.ticks_ms() + int(t * 1000)
         while utime.ticks_ms() < end_time:
             utime.sleep_ms(10)
-            data = microphone.read()
+            data = microphone.read(1)
             if data:
-                buffer += [ENCODER.encode(data[0], 100)]
+                ret += [enc.encode(data[0], 128)]
                 data = None
         microphone.disable()
-        buffer += [ENCODER.encode(d, 100) for d in microphone.read(10)]
-        return buffer
+        ret += [enc.encode(d, 128) for d in microphone.read(10)]
+        return ret
 
     def send_message(self, pressed=True):
         """Record a message via microphone, encode in opus, send the message to MQTT server"""
@@ -148,14 +148,21 @@ class microham:
             display.flush()
 
             try:
-                message = bytes(self.record_opus(12))
-                print("send_message: {}".format(message))
+                d = self.record(4)
+                data = bytearray(sum(len(x) for x in d))
+                i = 0
+                for x in d:
+                    data[i:i+len(x)] = x
+                    i += len(x)
+                chan = sndmixer.opus(data)
+                sndmixer.volume(chan, 128)
+                message = bytes(data)
 
-                if len(message) > 0:
-                    self.client.publish(topic, message)
-                    self.client.send_queue()
-                    print("\nmessage sent")
-                    display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
+                print("send_message: {}".format(message))
+                # self.client.publish(topic, message)
+                # self.client.send_queue()
+                print("\nmessage sent")
+                display.drawText(0, 16, "message sent", 0xFFFFFF, "7x5")
             except Exception as e:
                 display.drawText(
                     0, 8, "unable to transmit", 0xFFFFFF, "7x5")
